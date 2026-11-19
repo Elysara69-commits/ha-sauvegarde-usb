@@ -17,6 +17,9 @@ configuration:
   min_free_gb:
     name: Espace libre minimum (Go)
     description: Espace à laisser libre sur le disque après chaque copie.
+  only_full_backups:
+    name: Sauvegardes complètes seulement
+    description: Ignore les petites sauvegardes partielles (par ex. celles créées avant la mise à jour d'un module), pour que les copies gardées soient de vraies sauvegardes complètes.
   notification_mode:
     name: Quand prévenir
     description: none = jamais, errors = seulement en cas de problème, always = aussi à chaque copie réussie.

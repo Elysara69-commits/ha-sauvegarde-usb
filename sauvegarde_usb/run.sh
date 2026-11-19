@@ -10,7 +10,7 @@
 # =============================================================================
 set -u
 
-VERSION="1.0.0"
+VERSION="1.1.0"
 OPTIONS_FILE="${OPTIONS_FILE:-/data/options.json}"
 BACKUP_DIR="${BACKUP_DIR:-/backup}"
 MOUNT_POINT="${MOUNT_POINT:-/mnt/usb_backup}"
@@ -50,6 +50,7 @@ load_options() {
   NOTIF_CHANNEL="$(opt notification_channel)"; NOTIF_CHANNEL="${NOTIF_CHANNEL:-persistent}"
   NOTIFY_SERVICE="$(opt notify_service)"
   DISCORD_WEBHOOK="$(opt discord_webhook)"
+  ONLY_FULL="$(opt only_full_backups)"; [[ "$ONLY_FULL" == "false" ]] || ONLY_FULL="true"
 
   # garde-fous (le schéma de l'add-on valide déjà, mais on reste prudent)
   [[ "$KEEP_LAST" =~ ^[0-9]+$ ]] && (( KEEP_LAST >= 1 )) || KEEP_LAST=5
@@ -210,25 +211,38 @@ free_bytes() { df -PB1 "$1" | awk 'NR==2 {print $4}'; }
 # --------------------------------------------------------------------------- #
 # Sauvegardes
 # --------------------------------------------------------------------------- #
-# Liste "epoch|slug|nom" des sauvegardes présentes dans /backup, plus récentes d'abord.
+# Liste "epoch|slug|nom|chemin" des sauvegardes présentes dans /backup, plus récentes d'abord.
+# Les fichiers peuvent avoir n'importe quel nom (depuis 2025 : « Automatic_backup_2026.11.2_….tar ») :
+# l'identifiant, le nom et la date sont lus dans le backup.json contenu dans l'archive.
+read_meta() { # read_meta FICHIER -> JSON du backup.json (vide si illisible)
+  tar -xOf "$1" ./backup.json 2>/dev/null || tar -xOf "$1" backup.json 2>/dev/null || true
+}
+
 list_backups() {
-  local api_json=""
-  api_json="$(api GET /backups 2>/dev/null || true)"
-  local f slug epoch name date
+  local f slug epoch name date meta type ha
   for f in "$BACKUP_DIR"/*.tar; do
     [[ -f "$f" ]] || continue
-    slug="$(basename "$f" .tar)"
-    [[ "$slug" =~ ^[A-Za-z0-9]+$ ]] || continue
-    name=""; date=""
-    if [[ -n "$api_json" ]]; then
-      name="$(jq -r --arg s "$slug" '.data.backups[]? | select(.slug==$s) | .name // empty' <<<"$api_json" 2>/dev/null | head -n1)"
-      date="$(jq -r --arg s "$slug" '.data.backups[]? | select(.slug==$s) | .date // empty' <<<"$api_json" 2>/dev/null | head -n1)"
+    meta="$(read_meta "$f")"
+    slug=""; name=""; date=""; type=""; ha=""
+    if [[ -n "$meta" ]] && jq -e . >/dev/null 2>&1 <<<"$meta"; then
+      slug="$(jq -r '.slug // empty' <<<"$meta")"
+      name="$(jq -r '.name // empty' <<<"$meta")"
+      date="$(jq -r '.date // empty' <<<"$meta")"
+      type="$(jq -r '.type // empty' <<<"$meta")"
+      ha="$(jq -r 'if .homeassistant then "oui" else "" end' <<<"$meta")"
     fi
+    # Sauvegardes partielles (ex. créées avant la mise à jour d'un module) : ignorées si demandé
+    if [[ "$ONLY_FULL" == "true" && "$type" != "full" && -z "$ha" ]]; then
+      continue
+    fi
+    # identifiant de secours : nom du fichier réduit aux lettres et chiffres
+    [[ "$slug" =~ ^[A-Za-z0-9]+$ ]] || slug="$(basename "$f" .tar | tr -cd 'A-Za-z0-9' | tail -c 24)"
+    [[ -n "$slug" ]] || continue
     epoch=""
     [[ -n "$date" ]] && epoch="$(date -d "$date" +%s 2>/dev/null || true)"
     [[ -z "$epoch" ]] && epoch="$(stat -c %Y "$f")"
-    [[ -z "$name" ]] && name="sauvegarde"
-    printf '%s|%s|%s\n' "$epoch" "$slug" "$name"
+    name="${name//|/ }"; [[ -z "$name" ]] && name="sauvegarde"
+    printf '%s|%s|%s|%s\n' "$epoch" "$slug" "$name" "$f"
   done | sort -t'|' -k1,1nr
 }
 
@@ -324,8 +338,7 @@ run_cycle() {
   # Les N plus récentes, terminées (stables depuis 2 min)
   local keep=() line epoch slug name f
   for line in "${ALL[@]}"; do
-    IFS='|' read -r epoch slug name <<<"$line"
-    f="${BACKUP_DIR}/${slug}.tar"
+    IFS='|' read -r epoch slug name f <<<"$line"
     if (( now - $(stat -c %Y "$f") < STABLE_SECONDS )); then
       info "Sauvegarde ${slug} encore en cours d'écriture, elle sera copiée au prochain passage"
       continue
@@ -335,7 +348,7 @@ run_cycle() {
   done
   (( ${#keep[@]} == 0 )) && return 0
   KEEP_SLUGS=" "
-  for line in "${keep[@]}"; do IFS='|' read -r epoch slug name <<<"$line"; KEEP_SLUGS+="${slug} "; done
+  for line in "${keep[@]}"; do IFS='|' read -r epoch slug name f <<<"$line"; KEEP_SLUGS+="${slug} "; done
 
   mount_disk || return 1
   local dir="${DISK_ROOT}/${FOLDER}"
@@ -347,7 +360,7 @@ run_cycle() {
   # Que manque-t-il sur le disque ?
   local missing=() existing
   for line in "${keep[@]}"; do
-    IFS='|' read -r epoch slug name <<<"$line"
+    IFS='|' read -r epoch slug name f <<<"$line"
     existing="$(own_files "$dir" | grep -E "_${slug}\.tar$" | head -n1 || true)"
     [[ -z "$existing" ]] && missing+=("$line")
   done
@@ -356,8 +369,8 @@ run_cycle() {
   local deleted=0
   local copied=0 failed=0 copied_names=()
   for line in "${missing[@]}"; do
-    IFS='|' read -r epoch slug name <<<"$line"
-    local src="${BACKUP_DIR}/${slug}.tar" dst size free need
+    IFS='|' read -r epoch slug name src <<<"$line"
+    local dst size free need
     dst="${dir}/$(target_name "$epoch" "$slug" "$name")"
     size="$(stat -c %s "$src")"
     if [[ "$FSTYPE" == "vfat" ]] && (( size > FAT32_MAX )); then
@@ -431,7 +444,11 @@ cleanup() { umount_disk; info "Arrêt de l'add-on"; exit 0; }
 trap cleanup SIGTERM SIGINT
 
 load_options
-info "Sauvegarde USB v${VERSION} — disque « ${DEVICE_LABEL} », dossier « ${FOLDER} », garder ${KEEP_LAST}, contrôle toutes les ${INTERVAL_MIN} min, notifications ${NOTIF_MODE}/${NOTIF_CHANNEL}"
+if [[ -z "${TZ:-}" ]]; then
+  TZ="$(api GET /info 2>/dev/null | jq -r '.data.timezone // empty' 2>/dev/null || true)"
+  [[ -n "$TZ" ]] && export TZ
+fi
+info "Sauvegarde USB v${VERSION} — disque « ${DEVICE_LABEL} », dossier « ${FOLDER} », garder ${KEEP_LAST}, contrôle toutes les ${INTERVAL_MIN} min, notifications ${NOTIF_MODE}/${NOTIF_CHANNEL}, sauvegardes complètes seulement : ${ONLY_FULL}"
 [[ -f "$STATE_FILE" ]] || echo '{}' >"$STATE_FILE"
 KEEP_SLUGS=" "
 STDIN_OPEN=1

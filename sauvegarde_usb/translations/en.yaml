@@ -17,6 +17,9 @@ configuration:
   min_free_gb:
     name: Minimum free space (GB)
     description: Space to leave free on the drive after each copy.
+  only_full_backups:
+    name: Full backups only
+    description: Skips small partial backups (e.g. those made before an add-on update) so the kept copies are real full backups.
   notification_mode:
     name: When to notify
     description: none = never, errors = only on problems, always = also on each successful copy.

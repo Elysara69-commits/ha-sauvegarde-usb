@@ -1,5 +1,5 @@
 name: Sauvegarde USB
-version: "1.0.0"
+version: "1.1.0"
 slug: sauvegarde_usb
 description: Copie automatiquement les sauvegardes Home Assistant sur un disque ou une clé USB (rétention, vérification, notifications).
 url: https://github.com/Elysara69-commits/ha-sauvegarde-usb
@@ -30,6 +30,7 @@ options:
   check_interval_minutes: 10
   verify_checksum: true
   min_free_gb: 1
+  only_full_backups: true
   notification_mode: errors
   notification_channel: persistent
   notify_service: ""
@@ -41,6 +42,7 @@ schema:
   check_interval_minutes: int(1,1440)
   verify_checksum: bool
   min_free_gb: int(0,1000)
+  only_full_backups: bool
   notification_mode: list(none|errors|always)
   notification_channel: list(persistent|notify|discord)
   notify_service: str?

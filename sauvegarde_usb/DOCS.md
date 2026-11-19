@@ -25,7 +25,7 @@ Les fichiers sont nommés lisiblement : `2026-11-18_0508_Sauvegarde_automatique_
 ## Préparer le disque
 
 1. Sur un PC, formate le disque en **exFAT** (conseillé : lisible sous Windows, macOS et Linux). **ext4** et **NTFS** fonctionnent aussi. **Évite FAT32** : il refuse les fichiers de plus de 4 Go.
-2. Donne-lui un **nom de volume**, par exemple `SAUVEGARDE_HA`. Sous Windows : clic droit sur le disque → Propriétés → nom.
+2. Donne-lui un **nom de volume** court (11 caractères max. pour être sûr), par exemple `SAUVEGARDE`. Sous Windows : clic droit sur le disque → Propriétés → nom.
 3. Branche-le sur la machine Home Assistant.
 
 **Taille du disque** : prévois au moins « Nombre de copies à garder » × la taille d'une sauvegarde, plus une marge. Tu trouves la taille d'une sauvegarde dans Paramètres → Système → Sauvegardes.
@@ -40,6 +40,7 @@ Les fichiers sont nommés lisiblement : `2026-11-18_0508_Sauvegarde_automatique_
 | Contrôle toutes les (minutes) | Fréquence de vérification | `10` |
 | Vérification complète | Contrôle SHA-256 de chaque copie | oui |
 | Espace libre minimum (Go) | Marge à laisser sur le disque | `1` |
+| Sauvegardes complètes seulement | Ignore les sauvegardes partielles (mises à jour de modules) | oui |
 | Quand prévenir | `none`, `errors` ou `always` | `errors` |
 | Comment prévenir | `persistent`, `notify` ou `discord` | `persistent` |
 | Service de notification | ex. `notify.mobile_app_mon_telephone` | — |
