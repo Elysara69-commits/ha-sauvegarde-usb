@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.1.2
+- Correctif : le script ne recevait pas l'environnement du Supervisor (lancement via `with-contenv`) : heure locale, notifications et capteur fonctionnent désormais.
+- Détection du format du disque plus fiable (lecture directe), et message clair si le disque est visible mais illisible (« Mode de protection » encore activé).
+
 ## 1.1.1
 - Heure du journal enfin à l'heure locale (paquet `tzdata` ajouté : le fuseau était connu mais pas appliqué).
 - Disque introuvable : le journal liste les disques USB vus par le système (taille, format, nom), pour diagnostiquer plus vite.

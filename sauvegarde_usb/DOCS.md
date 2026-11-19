@@ -65,6 +65,10 @@ Le nom `local_sauvegarde_usb` vaut pour une installation en add-on local. Si tu 
 
 `sensor.sauvegarde_usb` prend l'état `ok`, `erreur` ou `aucune_sauvegarde`, avec ces attributs : disque, dernière copie, nombre de copies sur le disque, espace libre en Go, heure du dernier contrôle. Il est recréé par l'add-on, donc il disparaît si Home Assistant redémarre pendant que l'add-on est arrêté.
 
+## Important : désactiver le « Mode de protection »
+
+Sur la page de l'add-on, **désactive le « Mode de protection »** puis redémarre l'add-on. Tant qu'il est activé, Home Assistant refuse à l'add-on l'accès au disque USB : la clé est vue mais ne peut pas être lue ni montée (le journal l'indique).
+
 ## Droits demandés
 
 Pour monter un disque, l'add-on a besoin d'un **accès complet au matériel** et du droit **SYS_ADMIN**. Home Assistant lui donne donc une note de sécurité plus basse. C'est normal pour ce genre d'outil. Le code est court et lisible dans `run.sh`.

@@ -1,4 +1,5 @@
-#!/usr/bin/env bash
+#!/usr/bin/with-contenv bash
+# with-contenv : charge l'environnement fourni par le Supervisor (SUPERVISOR_TOKEN, TZ…)
 # =============================================================================
 #  Sauvegarde USB — add-on Home Assistant
 #  Copie les sauvegardes de /backup vers un disque USB identifié par son nom
@@ -10,7 +11,7 @@
 # =============================================================================
 set -u
 
-VERSION="1.1.1"
+VERSION="1.1.2"
 OPTIONS_FILE="${OPTIONS_FILE:-/data/options.json}"
 BACKUP_DIR="${BACKUP_DIR:-/backup}"
 MOUNT_POINT="${MOUNT_POINT:-/mnt/usb_backup}"
@@ -185,7 +186,14 @@ mount_disk() {
     fi
     return 1
   fi
-  FSTYPE="$(blkid -o value -s TYPE "$dev" 2>/dev/null || true)"
+  # Le disque doit être lisible : sinon c'est le « Mode de protection » qui bloque l'accès
+  if ! dd if="$dev" of=/dev/null bs=4096 count=1 2>/dev/null; then
+    fail no_access "Disque « ${DEVICE_LABEL} » trouvé (${dev}) mais illisible : désactive le « Mode de protection » de l'add-on (page de l'add-on), puis redémarre-le."
+    return 1
+  fi
+  # -p : lecture directe du disque (sans cache) ; lsblk en secours
+  FSTYPE="$(blkid -p -o value -s TYPE "$dev" 2>/dev/null || true)"
+  [[ -z "$FSTYPE" ]] && FSTYPE="$(lsblk -no FSTYPE "$dev" 2>/dev/null | head -n1 | tr -d ' ')"
   local mtype="$FSTYPE"
   case "$FSTYPE" in
     ext2|ext3|ext4|exfat|vfat|btrfs|xfs) ;;

@@ -1,5 +1,5 @@
 name: Sauvegarde USB
-version: "1.1.1"
+version: "1.1.2"
 slug: sauvegarde_usb
 description: Copie automatiquement les sauvegardes Home Assistant sur un disque ou une clé USB (rétention, vérification, notifications).
 url: https://github.com/Elysara69-commits/ha-sauvegarde-usb
