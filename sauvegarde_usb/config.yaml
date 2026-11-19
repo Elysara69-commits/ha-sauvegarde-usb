@@ -1,0 +1,47 @@
+name: Sauvegarde USB
+version: "1.0.0"
+slug: sauvegarde_usb
+description: Copie automatiquement les sauvegardes Home Assistant sur un disque ou une clé USB (rétention, vérification, notifications).
+url: https://github.com/Elysara69-commits/ha-sauvegarde-usb
+arch:
+  - amd64
+  - aarch64
+  - armv7
+init: false
+startup: services
+boot: auto
+stdin: true
+hassio_api: true
+hassio_role: backup
+homeassistant_api: true
+# Accès au disque USB : nécessaire pour monter le disque DANS le conteneur de l'add-on
+full_access: true
+udev: true
+privileged:
+  - SYS_ADMIN
+apparmor: false
+map:
+  - type: backup
+    read_only: true
+options:
+  device_label: SAUVEGARDE_HA
+  folder: home_assistant_backups
+  keep_last: 5
+  check_interval_minutes: 10
+  verify_checksum: true
+  min_free_gb: 1
+  notification_mode: errors
+  notification_channel: persistent
+  notify_service: ""
+  discord_webhook: ""
+schema:
+  device_label: str
+  folder: match(^[A-Za-z0-9._-]+$)
+  keep_last: int(1,100)
+  check_interval_minutes: int(1,1440)
+  verify_checksum: bool
+  min_free_gb: int(0,1000)
+  notification_mode: list(none|errors|always)
+  notification_channel: list(persistent|notify|discord)
+  notify_service: str?
+  discord_webhook: password?

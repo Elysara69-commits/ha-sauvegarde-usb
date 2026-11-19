@@ -1,0 +1,31 @@
+configuration:
+  device_label:
+    name: Nom du volume du disque
+    description: Nom (label) exact du disque ou de la clé USB, majuscules comprises. Exemple SAUVEGARDE_HA.
+  folder:
+    name: Dossier sur le disque
+    description: Dossier où ranger les copies. Seuls les fichiers créés par l'add-on dans ce dossier sont gérés.
+  keep_last:
+    name: Nombre de copies à garder
+    description: Nombre de sauvegardes conservées sur le disque. Les plus anciennes sont supprimées.
+  check_interval_minutes:
+    name: Contrôle toutes les (minutes)
+    description: Fréquence à laquelle l'add-on cherche de nouvelles sauvegardes à copier.
+  verify_checksum:
+    name: Vérification complète
+    description: Compare l'empreinte SHA-256 de chaque copie avec l'original (plus sûr, un peu plus lent).
+  min_free_gb:
+    name: Espace libre minimum (Go)
+    description: Espace à laisser libre sur le disque après chaque copie.
+  notification_mode:
+    name: Quand prévenir
+    description: none = jamais, errors = seulement en cas de problème, always = aussi à chaque copie réussie.
+  notification_channel:
+    name: Comment prévenir
+    description: persistent = notification dans Home Assistant, notify = service de notification (appli Companion…), discord = webhook Discord.
+  notify_service:
+    name: Service de notification
+    description: Pour le canal notify, par exemple notify.mobile_app_mon_telephone.
+  discord_webhook:
+    name: Webhook Discord
+    description: Pour le canal discord, l'URL https://discord.com/api/webhooks/...

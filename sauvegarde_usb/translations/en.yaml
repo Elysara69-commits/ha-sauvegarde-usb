@@ -1,0 +1,31 @@
+configuration:
+  device_label:
+    name: Drive volume label
+    description: Exact volume label of the USB drive or stick (case sensitive). Example SAUVEGARDE_HA.
+  folder:
+    name: Folder on the drive
+    description: Folder where copies are stored. Only files created by the add-on in this folder are managed.
+  keep_last:
+    name: Copies to keep
+    description: Number of backups kept on the drive. Older ones are deleted.
+  check_interval_minutes:
+    name: Check every (minutes)
+    description: How often the add-on looks for new backups to copy.
+  verify_checksum:
+    name: Full verification
+    description: Compares the SHA-256 checksum of each copy with the original (safer, slightly slower).
+  min_free_gb:
+    name: Minimum free space (GB)
+    description: Space to leave free on the drive after each copy.
+  notification_mode:
+    name: When to notify
+    description: none = never, errors = only on problems, always = also on each successful copy.
+  notification_channel:
+    name: How to notify
+    description: persistent = Home Assistant notification, notify = notify service (Companion app…), discord = Discord webhook.
+  notify_service:
+    name: Notify service
+    description: For the notify channel, e.g. notify.mobile_app_my_phone.
+  discord_webhook:
+    name: Discord webhook
+    description: For the discord channel, the https://discord.com/api/webhooks/... URL.
