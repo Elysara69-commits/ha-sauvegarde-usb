@@ -37,7 +37,8 @@ err()  { echo "[$(ts)] ERREUR $*"; }
 # --------------------------------------------------------------------------- #
 # Options
 # --------------------------------------------------------------------------- #
-opt() { jq -r --arg k "$1" '.[$k] // empty' "$OPTIONS_FILE" 2>/dev/null; }
+# NB : pas de « // empty » ici, sinon jq transforme la valeur false en vide (option ignorée)
+opt() { jq -r --arg k "$1" 'if has($k) and .[$k] != null then .[$k] else empty end' "$OPTIONS_FILE" 2>/dev/null; }
 
 load_options() {
   DEVICE_LABEL="$(opt device_label)"
@@ -224,7 +225,11 @@ list_backups() {
     [[ -f "$f" ]] || continue
     meta="$(read_meta "$f")"
     slug=""; name=""; date=""; type=""; ha=""
-    if [[ -n "$meta" ]] && jq -e . >/dev/null 2>&1 <<<"$meta"; then
+    # pas de backup.json lisible : ce n'est pas une sauvegarde Home Assistant (ou elle est en cours d'écriture)
+    if [[ -z "$meta" ]] || ! jq -e . >/dev/null 2>&1 <<<"$meta"; then
+      continue
+    fi
+    if true; then
       slug="$(jq -r '.slug // empty' <<<"$meta")"
       name="$(jq -r '.name // empty' <<<"$meta")"
       date="$(jq -r '.date // empty' <<<"$meta")"
