@@ -10,7 +10,7 @@
 # =============================================================================
 set -u
 
-VERSION="1.1.0"
+VERSION="1.1.1"
 OPTIONS_FILE="${OPTIONS_FILE:-/data/options.json}"
 BACKUP_DIR="${BACKUP_DIR:-/backup}"
 MOUNT_POINT="${MOUNT_POINT:-/mnt/usb_backup}"
@@ -174,6 +174,15 @@ mount_disk() {
   dev="$(blkid -L "$DEVICE_LABEL" 2>/dev/null || true)"
   if [[ -z "$dev" ]]; then
     fail no_disk "Disque « ${DEVICE_LABEL} » introuvable. Est-il bien branché ? (nom de volume exact, majuscules comprises)"
+    # Aide au diagnostic : ce que le système voit comme disques USB
+    local usb
+    usb="$(lsblk -rno NAME,SIZE,FSTYPE,LABEL,TRAN 2>/dev/null | awk '$NF=="usb" || /^sd[b-z][0-9]/' | head -n 10)"
+    if [[ -n "$usb" ]]; then
+      info "Disques USB vus (nom taille système label) :"
+      while IFS= read -r l; do info "   ${l}"; done <<<"$usb"
+    else
+      info "Aucun disque USB détecté."
+    fi
     return 1
   fi
   FSTYPE="$(blkid -o value -s TYPE "$dev" 2>/dev/null || true)"

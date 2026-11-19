@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.1.1
+- Heure du journal enfin à l'heure locale (paquet `tzdata` ajouté : le fuseau était connu mais pas appliqué).
+- Disque introuvable : le journal liste les disques USB vus par le système (taille, format, nom), pour diagnostiquer plus vite.
+
 ## 1.1.0
 - **Correctif important** : les sauvegardes récentes de Home Assistant (fichiers nommés comme `Automatic_backup_2026.11.2_….tar`) n'étaient pas détectées (« Aucune sauvegarde dans /backup »). L'identifiant, le nom et la date sont désormais lus dans le `backup.json` de chaque archive, quel que soit le nom du fichier.
 - Nouvelle option **« Sauvegardes complètes seulement »** (activée par défaut) : les petites sauvegardes partielles créées avant la mise à jour d'un module ne prennent plus la place des vraies sauvegardes.

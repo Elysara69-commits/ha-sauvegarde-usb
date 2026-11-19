@@ -10,7 +10,8 @@ RUN apk add --no-cache \
       jq \
       exfatprogs \
       e2fsprogs \
-      dosfstools
+      dosfstools \
+      tzdata
 
 COPY run.sh /run.sh
 RUN chmod a+x /run.sh
