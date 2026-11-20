@@ -11,7 +11,7 @@
 # =============================================================================
 set -u
 
-VERSION="1.1.2"
+VERSION="1.1.3"
 OPTIONS_FILE="${OPTIONS_FILE:-/data/options.json}"
 BACKUP_DIR="${BACKUP_DIR:-/backup}"
 MOUNT_POINT="${MOUNT_POINT:-/mnt/usb_backup}"
@@ -362,7 +362,8 @@ run_cycle() {
   for line in "${ALL[@]}"; do
     IFS='|' read -r epoch slug name f <<<"$line"
     if (( now - $(stat -c %Y "$f") < STABLE_SECONDS )); then
-      info "Sauvegarde ${slug} encore en cours d'écriture, elle sera copiée au prochain passage"
+      [[ "$(state_get writing)" == "$slug" ]] || info "Sauvegarde ${slug} encore en cours d'écriture, elle sera copiée au prochain passage"
+      state_set writing "$slug"
       continue
     fi
     keep+=("$line")
@@ -371,6 +372,20 @@ run_cycle() {
   (( ${#keep[@]} == 0 )) && return 0
   KEEP_SLUGS=" "
   for line in "${keep[@]}"; do IFS='|' read -r epoch slug name f <<<"$line"; KEEP_SLUGS+="${slug} "; done
+
+  # Rien de nouveau depuis le dernier passage réussi : on ne touche pas au disque
+  # (pas de montage inutile toutes les N minutes). Contrôle complet quand même
+  # au démarrage, sur commande « copy », et une fois par 24 h.
+  local lastfull; lastfull="$(state_get last_full_check)"; [[ "$lastfull" =~ ^[0-9]+$ ]] || lastfull=0
+  if [[ "$FORCE" != "1" && "$KEEP_SLUGS" == "$(state_get synced_slugs)" && -z "$(state_get last_error)" ]] \
+     && (( now - lastfull < 86400 )); then
+    local attrs; attrs="$(state_get last_attrs)"
+    if [[ -n "$attrs" ]] && jq -e . >/dev/null 2>&1 <<<"$attrs"; then
+      publish_sensor "ok" "$(jq -c --arg t "$(date -Iseconds)" '.dernier_controle=$t' <<<"$attrs")"
+    fi
+    return 0
+  fi
+  FORCE=0
 
   mount_disk || return 1
   local dir="${DISK_ROOT}/${FOLDER}"
@@ -446,14 +461,22 @@ run_cycle() {
 
   if (( failed == 0 )); then
     clear_error
-    publish_sensor "ok" "$(jq -nc --arg d "$DEVICE_LABEL" --arg l "$last_file" --arg f "$free_gb" \
+    local attrs
+    attrs="$(jq -nc --arg d "$DEVICE_LABEL" --arg l "$last_file" --arg f "$free_gb" \
       --argjson c "$count" --arg t "$(date -Iseconds)" \
       '{disque:$d, derniere_copie:$l, copies_sur_disque:$c, espace_libre_go:($f|tonumber), dernier_controle:$t}')"
+    publish_sensor "ok" "$attrs"
+    state_set last_attrs "$attrs"
+    state_set synced_slugs "$KEEP_SLUGS"
+    state_set last_full_check "$now"
     if (( copied > 0 )); then
       local list; list="$(printf '• %s\n' "${copied_names[@]}")"
       notify success "✅ Sauvegarde USB" "$(printf '%s copiée(s) sur %s :\n%s\n%s copie(s) sur le disque, %s Go libres.' \
         "$copied" "$DEVICE_LABEL" "$list" "$count" "$free_gb")"
     fi
+  fi
+  if (( copied == 0 && deleted == 0 && failed == 0 )); then
+    info "Contrôle du disque : tout est à jour (${count} copie(s), dernière : ${last_file:-aucune}, ${free_gb} Go libres)"
   fi
   (( copied > 0 || deleted > 0 )) && info "Bilan : ${copied} copiée(s), ${deleted} ancienne(s) supprimée(s), ${count} sur le disque, ${free_gb} Go libres"
   return 0
@@ -474,6 +497,7 @@ info "Sauvegarde USB v${VERSION} — disque « ${DEVICE_LABEL} », dossier « ${
 [[ -f "$STATE_FILE" ]] || echo '{}' >"$STATE_FILE"
 KEEP_SLUGS=" "
 STDIN_OPEN=1
+FORCE=1   # contrôle complet au démarrage
 
 while true; do
   run_cycle || true
@@ -486,7 +510,7 @@ while true; do
     if (( rc == 0 )); then
       cmd="$(printf '%s' "$cmd" | tr -d '"[:space:]' | tr '[:upper:]' '[:lower:]')"
       case "$cmd" in
-        copy|copie|now|maintenant) info "Passage immédiat demandé" ;;
+        copy|copie|now|maintenant) FORCE=1; info "Passage immédiat demandé" ;;
         test|testnotif) notify info "🔔 Sauvegarde USB" "Notification de test : la configuration fonctionne." ; info "Notification de test envoyée" ;;
         "") ;;
         *) warn "Commande inconnue : ${cmd} (utilise « copy » ou « test »)" ;;

@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.1.3
+- Le disque n'est plus monté et démonté toutes les N minutes pour rien : l'add-on ne le touche que lorsqu'une nouvelle sauvegarde est à copier (journal lisible, moins d'usure de la clé USB).
+- Contrôle complet du disque quand même au démarrage, sur la commande `copy`, et une fois par 24 h (ex. si des copies ont été supprimées à la main), avec une ligne « tout est à jour » dans le journal.
+- Le capteur `sensor.sauvegarde_usb` reste mis à jour à chaque contrôle (attribut `dernier_controle`).
+
 ## 1.1.2
 - Correctif : le script ne recevait pas l'environnement du Supervisor (lancement via `with-contenv`) : heure locale, notifications et capteur fonctionnent désormais.
 - Détection du format du disque plus fiable (lecture directe), et message clair si le disque est visible mais illisible (« Mode de protection » encore activé).
